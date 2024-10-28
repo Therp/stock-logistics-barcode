@@ -520,7 +520,9 @@ class WizStockBarcodesRead(models.AbstractModel):
 
     def set_product_qty(self):
         if self.manual_entry or self.is_manual_qty:
-            return
+            if self.lot_id:
+                self.packaging_qty = 1.0 if self.packaging_id else 0.0
+                self.product_qty = 1.0
         elif self.packaging_id:
             self.packaging_qty = 1.0
             self.product_qty = self.packaging_id.qty * self.packaging_qty
