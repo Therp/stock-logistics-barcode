@@ -137,7 +137,7 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         if self.option_group_id.source_pending_moves == "move_line_ids":
             move_lines = move_lines.sorted(
                 lambda sml: (
-                    not sml["product_id"].allow_serial_number_wizard,
+                    sml["product_id"].tracking == "none",
                     sml[location_field].posx,
                     sml[location_field].posy,
                     sml[location_field].posz,
@@ -148,7 +148,7 @@ class WizStockBarcodesReadPicking(models.TransientModel):
             # Stock moves
             move_lines = move_lines.sorted(
                 lambda sm: (
-                    not (sm.move_line_ids[:1] or sm)["product_id"].allow_serial_number_wizard,
+                    (sm.move_line_ids[:1] or sm)["product_id"].tracking == "none",
                     (sm.move_line_ids[:1] or sm)[location_field].posx,
                     (sm.move_line_ids[:1] or sm)[location_field].posy,
                     (sm.move_line_ids[:1] or sm)[location_field].posz,
