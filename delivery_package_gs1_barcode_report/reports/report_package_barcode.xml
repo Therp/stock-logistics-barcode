@@ -1,0 +1,302 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<odoo>
+    <template id="report_package_barcode">
+        <t t-call="web.basic_layout">
+            <t t-foreach="docs" t-as="picking">
+            <!-- setup variables -->
+            <t
+                    t-set="picking"
+                    t-value="picking.with_context(lang=picking._get_report_lang())"
+                />
+            <!-- define package iterable -->
+            <t
+                    t-set="packages"
+                    t-value="picking.move_line_ids.mapped('result_package_id')"
+                />
+            <!-- setup addresses -->
+            <t
+                    t-set="partner_to"
+                    t-value="picking.sudo().sale_id.partner_shipping_id or picking.sudo().partner_id"
+                />
+            <t t-set="information_block">
+                <div>
+                    <div>
+                        <span><strong>From:</strong></span>
+                        <div
+                                t-field="picking.company_id.partner_id"
+                                t-options='{"widget": "contact","fields": ["address", "name"],"no_marker": True}'
+                            />
+                    </div>
+                </div>
+            </t>
+            <t t-set="address">
+                <div>
+                    <div>
+                        <span><strong>To:</strong></span>
+                        <div
+                                t-out="partner_to"
+                                t-options='{"widget": "contact", "fields": ["address", "name",], "no_marker": True}'
+                            />
+                    </div>
+                </div>
+            </t>
+            <!-- Put addresses in header -->
+            <div class="header">
+                <t t-call="web.address_layout" />
+            </div>
+            <t t-foreach="packages" t-as="package">
+                <!-- Define package variables
+                     product
+                     product_name
+                     product_number
+                     lot
+                     lot_number
+                     expiration_date
+                     expiration_label
+                     reference
+                     serial
+                     quantity
+                     weight
+                     ...
+                 -->
+                <t t-set="product" t-value="False" />
+                <t t-set="product_name" t-value="False" />
+                <t
+                        t-set="product_number"
+                        t-value="len(package.quant_ids.mapped('product_id'))"
+                    />
+                <t t-set="lot" t-value="False" />
+                <t
+                        t-set="lot_number"
+                        t-value="len(package.quant_ids.mapped('lot_id'))"
+                    />
+                <t t-set="expiration_date" t-value="False" />
+                <t t-set="expiration_label" t-value="False" />
+                <t t-if="product_number > 1">
+                    <t t-set="product_name" t-value="'Heterogeneous package'" />
+                </t>
+                <t t-elif="product_number == 1">
+                    <t t-set="product" t-value="package.quant_ids[0].product_id" />
+                    <t t-set="product_name" t-value="product.name" />
+                </t>
+                <t t-if="lot_number == 1">
+                    <t t-set="lot" t-value="package.quant_ids.mapped('lot_id')" />
+                </t>
+                <t t-if="lot_number == 1 and lot and lot.expiration_date">
+                    <t
+                            t-set="expiration"
+                            t-value="str(lot.expiration_date.strftime('%y%m%d'))"
+                        />
+                    <t
+                            t-set="expiration_label"
+                            t-value="str(lot.expiration_date.strftime('%d-%m-%Y'))"
+                        />
+                </t>
+                <t t-elif="lot_number > 1">
+                    <t t-set="expiration_label" t-value="'MIXED'" />
+                </t>
+                <t
+                        t-set="order_number"
+                        t-value="picking.origin or picking.sudo().sale_id.name or 'No order number'"
+                    />
+                <t
+                        t-set="reference"
+                        t-value="    picking.sudo().sale_id.client_order_ref or 'no client order ref'"
+                    />
+                <t
+                        t-set="quantity"
+                        t-value="str(int(sum(package.quant_ids.mapped('quantity'))))"
+                    />
+                <t t-set="weight" t-value="package.weight" />
+                <!-- Block 1-->
+                <hr class="hr" />
+                <div class="container-fluid">
+                <div class="row row-no-gutters ">
+                    <div class="col-12">
+                        <strong>Product Name:</strong>
+                        <p t-out="product_name" />
+                    </div>
+                </div>
+                <div class="row row-no-gutters ">
+                    <div class="col-6">
+                        <strong>Order Number:</strong>
+                            <p t-out="order_number" />
+                    </div>
+                    <div class="col-6">
+                        <strong>Reference</strong>
+                        <p t-out="reference" />
+                    </div>
+                </div>
+                </div>
+                <hr class="hr" />
+                <!-- Block 2-->
+                <div class="container-fluid">
+                <div class="row">
+                    <div t-if="lot_number == 1 and product.barcode" class="col-2">
+                        <strong>Content</strong>
+                    </div>
+                    <div t-if="lot_number == 1 and product.barcode" class="col-4">
+                        <p t-out="product.barcode" />
+                    </div>
+                    <div class="col-2">
+                        <strong>Count</strong>
+                    </div>
+                    <div class="col-4">
+                        <p t-out="quantity" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div t-if="lot" class="col-2">
+                        <strong>Batch/Lot</strong>
+                    </div>
+                    <div t-if="lot" class="col-4">
+                        <p t-out="lot.name" />
+                    </div>
+                    <div class="col-2">
+                        <strong>Net Weight</strong>
+                    </div>
+                    <div class="col-4">
+                        <p t-out="weight" />
+                    </div>
+                </div>
+                <div class="row">
+                    <div class="col-2">
+                        <strong>SSCC</strong>
+                    </div>
+                    <div class="col-4">
+                        <p t-out="package.name" />
+                    </div>
+                    <div t-if="expiration_label" class="col-2">
+                        <strong>Best Before</strong>
+                    </div>
+                    <div t-if="expiration_label" class="col-4">
+                         <p t-out="expiration_label" />
+                    </div>
+                </div>
+                </div>
+                <!-- Barcode 1 - product barcode
+                    - Barcode: "02" + product.barcode (14 digits) - only if a single product, and barcode exists -
+                    - Serial: "10" + lot_id.name (1-20 chars)
+                       - only if there's a single lot
+                    - Quantity: content = "37" + qty (1-8 digits)
+                -->
+                <!-- Check if product.barcode should be displayed -->
+                <hr class="hr" />
+                <t t-if="product and product.barcode">
+                    <t
+                            t-set="product_barcode"
+                            t-value="'0' * (14 - len(product.barcode)) + product.barcode"
+                        />
+                </t>
+                <!-- Check if product.lot_id should be displayed -->
+                <t t-if="lot_number == 1 and lot">
+                    <t t-set="serial" t-value="str(lot.name)" />
+                </t>
+                <!-- construct barcode1 -->
+                <t t-set="barcode1" t-value="chr(241)" />
+                <t t-set="barcode1_humanreadable" t-value="''" />
+                <t t-if="product_barcode">
+                    <t
+                            t-set="barcode1"
+                            t-value="barcode1 + '02' + product_barcode + chr(241)"
+                        />
+                    <t
+                            t-set="barcode1_humanreadable"
+                            t-value="barcode1_humanreadable + '(02)' + product_barcode"
+                        />
+                </t>
+                <t t-if="serial">
+                    <t t-set="barcode1" t-value="barcode1 + '10' + serial + chr(241)" />
+                    <t
+                            t-set="barcode1_humanreadable"
+                            t-value="barcode1_humanreadable + '(10)' + serial"
+                        />
+                </t>
+                <t t-set="barcode1" t-value="barcode1 + '37' + quantity + chr(241)" />
+                <t
+                        t-set="barcode1_humanreadable"
+                        t-value="    barcode1_humanreadable + '(37)' + quantity"
+                    />
+                <div style="margin-bottom: 5px;">
+                    <td>
+                        <span
+                                t-out="barcode1"
+                                t-options="    {'widget': 'barcode', 'symbology':     'Code128', 'img_style':     'width:100%;height:22mm'}"
+                            />
+                        <div t-if="barcode1_humanreadable" class="text-center">
+                            <span t-out="barcode1_humanreadable" />
+                        </div>
+                    </td>
+                </div>
+                <!-- Barcode 2 - package barcode
+                    - Best before: "15" + lot_id.expiration_date (6 digits YYMMDD)
+                    omit if multiple lot matches, or expiration date not filled
+                    - Weight: "3103" + AAA.BBB (6 digits eg 21.43     kg = 021430)
+                -->
+                <!-- construct barcode2 -->
+                <t t-set="barcode2" t-value="chr(241)" />
+                <t t-set="barcode2_humanreadable" t-value="''" />
+                <t t-if="expiration">
+                  <t
+                            t-set="barcode2"
+                            t-value="barcode2 +'15' + expiration + chr(241)"
+                        />
+                    <t
+                            t-set="barcode2_humanreadable"
+                            t-value="barcode2_humanreadable +'(15)' + expiration"
+                        />
+                </t>
+                <t
+                        t-set="weightstring"
+                        t-value="str(floor(weight / 100 % 10)) + str(floor(weight / 10 % 10)) + str(floor(weight % 10)) + str(floor(weight * 10 % 10)) + str(floor(weight * 100 % 10)) + str(floor(weight * 1000 % 10))"
+                    />
+                <t
+                        t-set="barcode2"
+                        t-value="barcode2 +'3103' + weightstring + chr(241)"
+                    />
+                <t
+                        t-set="barcode2_humanreadable"
+                        t-value="barcode2_humanreadable + '(3103)' + weightstring"
+                    />
+                <div style="margin-bottom: 5px;">
+                <td>
+                    <span
+                                t-out="barcode2"
+                                t-options="    {'widget': 'barcode', 'humanreadable': 0,'symbology': 'Code128', 'img_style':     'width:100%;height:22mm'}"
+                            />
+                    <div class="text-center">
+                        <span t-out="barcode2_humanreadable" />
+                    </div>
+                </td>
+                </div>
+                <!-- Barcode 3 - package barcode
+                    - SSCC "00" + package.name (18 digits)
+                -->
+                <t
+                        t-set="barcode3"
+                        t-value="chr(241) + '00' + package.name + chr(241)"
+                    />
+                <t t-set="barcode3_humanreadable" t-value="'(00)' + package.name" />
+                <div>
+                <td>
+                    <span
+                                t-out="barcode3"
+                                t-options="{'widget':'barcode','humanreadable': 0, 'symbology':'Code128', 'img_style':'width:100%;height:22mm'}"
+                            />
+                    <div class="text-center">
+                        <span t-out="barcode3_humanreadable" />
+                    </div>
+                </td>
+                </div>
+                <hr class="hr" />
+                <!-- new page for each package -->
+                <p style="page-break-before:always;"> </p>
+                </t>
+            </t>
+        </t>
+    </template>
+
+    <template id="report_picking_packages">
+        <t t-call="delivery_package_gs1_barcode_report.report_package_barcode" />
+    </template>
+</odoo>
