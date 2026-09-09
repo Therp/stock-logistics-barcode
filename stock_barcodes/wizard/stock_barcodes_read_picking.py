@@ -814,8 +814,10 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         return res
 
     def get_lot_by_removal_strategy(self):
-        # Odoo 19 quitó el helper `odoo.fields.first`; `[:1]` es lo que hacía.
-        quants = self.env["stock.quant"]._gather(self.product_id, self.location_id)[:1]
+        all_quants = self.env["stock.quant"]._gather(
+            self.product_id, self.location_id
+        )
+        quants = all_quants.filtered(lambda quant: quant.available_quantity > 0)[:1]
         # TODO: Perhaps update location_id from quant??
         self.lot_id = quants.lot_id
 
