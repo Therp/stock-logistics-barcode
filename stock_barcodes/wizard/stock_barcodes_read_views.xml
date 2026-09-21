@@ -440,6 +440,17 @@
                             nolabel="1"
                             readonly="not manual_entry"
                         />
+                        <button
+                            id="btn_create_packaging"
+                            class="btn-sm float-end oe_kanban_action_button btn btn-secondary border"
+                            type="action"
+                            name="%(action_stock_barcodes_new_packaging)d"
+                            icon="fa-plus fa-1x"
+                            title="Create packaging"
+                            context="{'default_product_id': product_id}"
+                            invisible="not create_lot or not product_id"
+                            help="Create new packaging"
+                        />
                     </div>
                 </group>
             </group>

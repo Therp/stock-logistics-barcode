@@ -14,32 +14,18 @@ class StockMoveLine(models.Model):
         readonly=False,
         store=True,
     )
-    qty_picked = fields.Float(
-        "Quantity picked",
-        digits="Product Unit of Measure",
-        readonly=False,
-        store=True,
-        compute="_compute_qty_picked",
-    )
 
-    @api.depends("picked", "quantity")
-    def _compute_qty_picked(self):
-        for line in self:
-            if line.picked or line.state == "done":
-                line.qty_picked = line.quantity
-            else:
-                # Editable stored compute used as a smart default: keep the
-                # quantity accumulated by scanning.
-                line.qty_picked = line.qty_picked
-
-    @api.depends("qty_picked", "quantity_product_uom")
+    @api.depends("qty_picked", "quantity", "product_uom_id")
     def _compute_barcode_scan_state(self):
         for line in self:
             if line.barcode_scan_state == "done_forced" and line.qty_picked:
                 # A line forced by scanning keeps its state until its picked
                 # quantity is cleared; do not downgrade it to plain "done".
                 line.barcode_scan_state = "done_forced"
-            elif line.qty_picked and line.qty_picked >= line.quantity_product_uom:
+            elif (
+                line.qty_picked
+                and line.product_uom_id.compare(line.qty_picked, line.quantity) >= 0
+            ):
                 line.barcode_scan_state = "done"
             else:
                 # Nothing picked (or no demand at all) is never "done": this

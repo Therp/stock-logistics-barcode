@@ -25,12 +25,12 @@ class TestCommonStockBarcodes(TransactionCase):
         cls.IrActions = cls.env["ir.actions.actions"]
         cls.Product = cls.env["product.product"]
         cls.ProductTemplate = cls.env["product.template"]
-        # En 19 una "packaging" es una unidad de medida (uom.uom).
-        cls.ProductPackaging = cls.env["uom.uom"]
+        cls.ProductUom = cls.env["product.uom"]
         cls.WizScanReadPicking = cls.env["wiz.stock.barcodes.read.picking"]
         cls.WizScanReadInventory = cls.env["wiz.stock.barcodes.read.inventory"]
         cls.WizScanReadTodo = cls.env["wiz.stock.barcodes.read.todo"]
         cls.WizStockBarcodeRead = cls.env["wiz.stock.barcodes.read"]
+        cls.WizStockBarcodesNewPackaging = cls.env["wiz.stock.barcodes.new.packaging"]
         cls.StockProductionLot = cls.env["stock.lot"]
         cls.StockPicking = cls.env["stock.picking"]
         cls.StockQuant = cls.env["stock.quant"]
@@ -321,6 +321,43 @@ class TestCommonStockBarcodes(TransactionCase):
         )
         cls.product_tracking_serial1 = cls.Product.create(product_tracking_values)
 
+        cls.packaging_uom_wo_tracking = cls.product_wo_tracking.uom_ids[:1]
+        cls.packaging_uom_tracking = cls.product_tracking.uom_ids[:1]
+        cls.packaging_uom_tracking_serial = cls.product_tracking_serial.uom_ids[:1]
+        cls.packaging_uom_tracking_serial1 = cls.product_tracking_serial1.uom_ids[:1]
+        cls.packaging_wo_tracking = cls.ProductUom.create(
+            {
+                "product_id": cls.product_wo_tracking.id,
+                "uom_id": cls.packaging_uom_wo_tracking.id,
+                "barcode": "5099206074439",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.packaging_tracking = cls.ProductUom.create(
+            {
+                "product_id": cls.product_tracking.id,
+                "uom_id": cls.packaging_uom_tracking.id,
+                "barcode": "5420008510489",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.packaging_tracking_serial = cls.ProductUom.create(
+            {
+                "product_id": cls.product_tracking_serial.id,
+                "uom_id": cls.packaging_uom_tracking_serial.id,
+                "barcode": "5420008520489",
+                "company_id": cls.company.id,
+            }
+        )
+        cls.packaging_tracking_serial1 = cls.ProductUom.create(
+            {
+                "product_id": cls.product_tracking_serial1.id,
+                "uom_id": cls.packaging_uom_tracking_serial1.id,
+                "barcode": "84332810068722",
+                "company_id": cls.company.id,
+            }
+        )
+
         cls.lot_1 = cls.StockProductionLot.create(
             {
                 "name": "8411822222568",
@@ -381,7 +418,7 @@ class TestCommonStockBarcodes(TransactionCase):
                             "company_id": cls.company.id,
                             "location_id": cls.location_1.id,
                             "location_dest_id": cls.location_1.id,
-                            "quantity_product_uom": 15,
+                            "quantity": 15,
                             "qty_picked": 10,
                         }
                     ),
@@ -430,7 +467,6 @@ class TestCommonStockBarcodes(TransactionCase):
                         "location_dest_id": cls.stock_location.id,
                         "company_id": cls.company.id,
                         "quantity": 0,
-                        "quantity_product_uom": 10,
                     }
                 )
             ],
@@ -462,7 +498,6 @@ class TestCommonStockBarcodes(TransactionCase):
                             "company_id": cls.company.id,
                             "quantity": 10,
                             "barcode_scan_state": "pending",
-                            "quantity_product_uom": 10,
                         }
                     )
                 ],
@@ -477,20 +512,17 @@ class TestCommonStockBarcodes(TransactionCase):
             "company_id": cls.company.id,
             "quantity": 20,
             "barcode_scan_state": "pending",
-            "quantity_product_uom": 20,
         }
         cls.test_move_line = cls.StockMoveLine.create(line_values)
         line_values.update(
             {
                 "quantity": 30,
-                "quantity_product_uom": 30,
             }
         )
         cls.test_move_line1 = cls.StockMoveLine.create(line_values)
         line_values.update(
             {
                 "quantity": 40,
-                "quantity_product_uom": 40,
             }
         )
         cls.test_move_line2 = cls.StockMoveLine.create(line_values)

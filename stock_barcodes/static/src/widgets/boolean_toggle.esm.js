@@ -75,9 +75,7 @@ export class BarcodeBooleanToggle extends BooleanToggleField {
             return;
         }
 
-        // NOTE: Selector kept as in original code. If the class name had a typo
-        // (oe_stock_barcordes_content), consider correcting it in your templates
-        // to "oe_stock_barcodes_content" and update this selector accordingly.
+        // Keep the existing CSS/template class used by the barcode scan form.
         const formEdit = q1("div.oe_stock_barcordes_content > div.scan_fields");
         const invKanban = q1("div[name='inventory_quant_ids'] div.o_kanban_renderer");
 
@@ -110,7 +108,6 @@ export class BarcodeBooleanToggle extends BooleanToggleField {
 const barcodeBooleanToggle = {
     displayName: "Barcode Boolean Toggle",
     component: BarcodeBooleanToggle,
-    // Was [""] -> fix for proper field binding
     supportedTypes: ["boolean"],
     extractProps: ({attrs}) => ({
         name: attrs.name,

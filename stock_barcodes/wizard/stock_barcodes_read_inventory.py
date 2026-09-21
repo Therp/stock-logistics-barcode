@@ -15,7 +15,7 @@ class WizStockBarcodesReadInventory(models.TransientModel):
     # Overwrite is needed to take into account new domain values
     product_id = fields.Many2one(domain=lambda self: self._get_product_domain())
     inventory_product_qty = fields.Float(
-        string="Inventory quantities", digits="Product Unit of Measure", readonly=True
+        string="Inventory quantities", digits="Product Unit", readonly=True
     )
     inventory_quant_ids = fields.Many2many(
         comodel_name="stock.quant", compute="_compute_inventory_quant_ids"
@@ -56,14 +56,7 @@ class WizStockBarcodesReadInventory(models.TransientModel):
             self._inventory_quant_ids_domain(), order=order
         )
         if order is None:
-            quants = quants.sorted(
-                lambda q: (
-                    q.location_id.posx,
-                    q.location_id.posy,
-                    q.location_id.posz,
-                    q.location_id.name,
-                )
-            )
+            quants = quants.sorted(lambda q: (q.location_id.complete_name or "", q.id))
         return quants
 
     @api.depends("display_read_quant")

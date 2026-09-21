@@ -41,8 +41,6 @@ class WizStockBarcodesRead(models.AbstractModel):
     location_dest_id = fields.Many2one(
         comodel_name="stock.location", string="Location dest."
     )
-    # Odoo 19 eliminó product.packaging: las presentaciones son unidades de
-    # medida (uom.uom) listadas en product_id.uom_ids.
     packaging_uom_id = fields.Many2one(
         comodel_name="uom.uom",
         string="Packaging",
@@ -52,8 +50,8 @@ class WizStockBarcodesRead(models.AbstractModel):
     package_id = fields.Many2one(comodel_name="stock.package")
     result_package_id = fields.Many2one(comodel_name="stock.package")
     owner_id = fields.Many2one(comodel_name="res.partner")
-    packaging_qty = fields.Float(string="Package Qty", digits="Product Unit of Measure")
-    product_qty = fields.Float(digits="Product Unit of Measure")
+    packaging_qty = fields.Float(string="Package Qty", digits="Product Unit")
+    product_qty = fields.Float(digits="Product Unit")
     manual_entry = fields.Boolean(string="Manual", help="Entry manual data")
     confirmed_moves = fields.Boolean(
         string="Confirmed moves", related="option_group_id.confirmed_moves"
@@ -100,10 +98,10 @@ class WizStockBarcodesRead(models.AbstractModel):
     display_assign_serial = fields.Boolean(compute="_compute_display_assign_serial")
     keep_result_package = fields.Boolean()
     total_product_uom_qty = fields.Float(
-        string="Product Demand", digits="Product Unit of Measure", store=False
+        string="Product Demand", digits="Product Unit", store=False
     )
     total_product_qty_done = fields.Float(
-        string="Product Qty. Done", digits="Product Unit of Measure", store=False
+        string="Product Qty. Done", digits="Product Unit", store=False
     )
 
     enable_add_product = fields.Boolean(default=True)
@@ -456,12 +454,15 @@ class WizStockBarcodesRead(models.AbstractModel):
                         self.location_id = locations
 
     def process_barcode_packaging_id(self):
-        # En Odoo 19 las presentaciones son uom.uom y el core NO les da un
-        # campo de código de barras, así que no hay dónde buscar. La
-        # presentación se elige a mano y multiplica la cantidad
-        # (onchange_packaging_qty). Cuando el core —o un módulo de la OCA—
-        # vuelva a dar barcode a la unidad de medida, acá se reengancha.
-        return False
+        if not self.env.user.has_group("uom.group_uom"):
+            return False
+        packaging = self.env["product.uom"].search(
+            self._barcode_domain(self.barcode), limit=1
+        )
+        if not packaging:
+            return False
+        self.action_packaging_scaned_post(packaging)
+        return True
 
     def process_barcode(self, barcode):
         if not self:
@@ -706,16 +707,12 @@ class WizStockBarcodesRead(models.AbstractModel):
         self.set_product_qty()
 
     def action_packaging_scaned_post(self, packaging):
-        # `packaging` es una uom.uom: no identifica al producto (una misma
-        # unidad sirve a muchos), así que solo se acepta si pertenece al
-        # producto en curso.
-        if packaging not in self.product_id.uom_ids:
-            self._set_message_info(
-                "not_found",
-                self.env._("That packaging does not belong to this product"),
-            )
-            return False
-        self.packaging_uom_id = packaging
+        product = packaging.product_id
+        if self.product_id != product and self.lot_id.product_id != product:
+            self.lot_id = False
+        self.product_id = product
+        self.product_uom_id = product.uom_id
+        self.packaging_uom_id = packaging.uom_id
         self.set_product_qty()
         return True
 

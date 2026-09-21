@@ -5,7 +5,7 @@ from collections import OrderedDict, defaultdict
 
 from odoo import api, fields, models
 from odoo.exceptions import ValidationError
-from odoo.tools.float_utils import float_compare, float_round
+from odoo.tools.float_utils import float_compare
 from odoo.tools.safe_eval import safe_eval
 
 _logger = logging.getLogger(__name__)
@@ -24,7 +24,7 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         comodel_name="stock.picking", string="Pickings", readonly=True
     )
     picking_product_qty = fields.Float(
-        string="Picking quantities", digits="Product Unit of Measure", readonly=True
+        string="Picking quantities", digits="Product Unit", readonly=True
     )
     picking_type_code = fields.Selection(
         [("incoming", "Vendors"), ("outgoing", "Customers"), ("internal", "Internal")],
@@ -120,8 +120,18 @@ class WizStockBarcodesReadPicking(models.TransientModel):
                     ("state", "!=", "cancel"),
                 ]
             )
-            rec.total_product_uom_qty = sum(product_moves.mapped("product_uom_qty"))
-            rec.total_product_qty_done = sum(product_moves.mapped("qty_picked"))
+            rec.total_product_uom_qty = sum(
+                move.product_uom._compute_quantity(
+                    move.product_uom_qty, rec.product_id.uom_id, round=False
+                )
+                for move in product_moves
+            )
+            rec.total_product_qty_done = sum(
+                move.product_uom._compute_quantity(
+                    move.qty_picked, rec.product_id.uom_id, round=False
+                )
+                for move in product_moves
+            )
 
     @api.depends("location_id", "product_id", "lot_id")
     def _compute_qty_available(self):
@@ -150,9 +160,11 @@ class WizStockBarcodesReadPicking(models.TransientModel):
                 lambda m: m.product_id == self.product_id
             )
         for sml in done_move_lines:
-            over_done_qty = float_round(
-                sml.quantity - sml.quantity_product_uom,
-                precision_rounding=sml.product_uom_id.rounding,
+            picked_qty = sml.product_uom_id._compute_quantity(
+                sml.qty_picked, sml.product_id.uom_id, round=False
+            )
+            over_done_qty = sml.product_id.uom_id.round(
+                picked_qty - sml.quantity_product_uom
             )
             if over_done_qty > 0.0:
                 self.qty_available -= over_done_qty
@@ -178,10 +190,6 @@ class WizStockBarcodesReadPicking(models.TransientModel):
                 location_field = "location_dest_id"
             else:
                 location_field = "location_id"
-        # Odoo 19 quitó las coordenadas posx/posy/posz de stock.location, que es
-        # lo que ordenaba el recorrido del depósito. Queda el nombre completo,
-        # que respeta la jerarquía de ubicaciones; un módulo que reponga
-        # coordenadas puede extender `_get_location_sort_key`.
         if self.option_group_id.source_pending_moves == "move_line_ids":
             move_lines = move_lines.sorted(
                 lambda sml: self._get_location_sort_key(sml[location_field])
@@ -196,7 +204,6 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         return move_lines
 
     def _get_location_sort_key(self, location):
-        """Clave de ordenamiento del recorrido de preparación."""
         return (location.complete_name or "",)
 
     def _get_stock_move_lines_todo(self):
@@ -264,7 +271,7 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         ):
             self.result_package_id = move_line.result_package_id
         if self.option_group_id.get_option_value("product_qty", "filled_default"):
-            qty_picked = sum(move_line.line_ids.mapped("qty_picked"))
+            qty_picked = move_line.qty_done
             if move_line.is_stock_move_line_origin:
                 pending_qty = move_line.product_qty_reserved - qty_picked
             else:
@@ -358,16 +365,18 @@ class WizStockBarcodesReadPicking(models.TransientModel):
             and sum(self.package_id.quant_ids.mapped("quantity")) <= self.product_qty
         ):
             self.result_package_id = self.package_id
+        line_uom = (
+            self.packaging_uom_id
+            or candidate_move.product_uom
+            or self.product_id.uom_id
+        )
         vals = {
             "picking_id": picking.id,
             "move_id": candidate_move.id,
-            "qty_picked": available_qty,
-            # En 19 la presentación YA es una unidad de medida.
-            "product_uom_id": (
-                self.packaging_uom_id.id
-                or candidate_move.product_uom.id
-                or self.product_id.uom_id.id
+            "qty_picked": self.product_id.uom_id._compute_quantity(
+                available_qty, line_uom, round=False
             ),
+            "product_uom_id": line_uom.id,
             "product_id": self.product_id.id,
             "location_id": self.location_id.id,
             "location_dest_id": self.location_dest_id.id,
@@ -584,7 +593,12 @@ class WizStockBarcodesReadPicking(models.TransientModel):
             if candidate_domain:
                 lines = lines.filtered_domain(candidate_domain)
         available_qty = self.product_qty
-        max_quantity = sum(sm.product_uom_qty - sm.qty_picked for sm in moves_todo)
+        max_quantity = sum(
+            sm.product_uom._compute_quantity(
+                sm.product_uom_qty - sm.qty_picked, self.product_id.uom_id, round=False
+            )
+            for sm in moves_todo
+        )
         if (
             not self.option_group_id.code == "REL"
             and not self.env.context.get("force_create_move", False)
@@ -606,9 +620,12 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         move_lines_dic = {}
         context = self.env.context
         for line in lines:
+            picked_qty = line.product_uom_id._compute_quantity(
+                line.qty_picked, self.product_id.uom_id, round=False
+            )
             if line.quantity_product_uom and len(lines) > 1:
                 assigned_qty = min(
-                    max(line.quantity_product_uom - line.qty_picked, 0.0), available_qty
+                    max(line.quantity_product_uom - picked_qty, 0.0), available_qty
                 )
             else:
                 assigned_qty = available_qty
@@ -623,10 +640,12 @@ class WizStockBarcodesReadPicking(models.TransientModel):
                 # Do not increase the quantity, if the quantity is > 0
                 qty_done = assigned_qty
             else:
-                qty_done = line.qty_picked + assigned_qty
+                qty_done = picked_qty + assigned_qty
             sml_vals.update(
                 {
-                    "qty_picked": qty_done,
+                    "qty_picked": self.product_id.uom_id._compute_quantity(
+                        qty_done, line.product_uom_id, round=False
+                    ),
                     # "quantity": qty_done,
                     "result_package_id": self.result_package_id.id,
                 }
@@ -634,10 +653,14 @@ class WizStockBarcodesReadPicking(models.TransientModel):
             # Add or remove result_pselfackage_id
             package_qty_available = sum(
                 self.package_id.quant_ids.filtered(
-                    lambda q: q.lot_id == self.lot_id
+                    lambda q: q.product_id == self.product_id
+                    and q.lot_id == self.lot_id
                 ).mapped("quantity")
             )
-            if sml_vals["qty_picked"] >= package_qty_available:
+            picked_qty = line.product_uom_id._compute_quantity(
+                sml_vals["qty_picked"], self.product_id.uom_id, round=False
+            )
+            if picked_qty >= package_qty_available:
                 if not self.result_package_id:
                     sml_vals.update({"result_package_id": self.package_id.id})
             elif line.result_package_id == line.package_id:
@@ -686,7 +709,12 @@ class WizStockBarcodesReadPicking(models.TransientModel):
                     reserved_qty = sum(
                         move_to_link.move_line_ids.mapped("quantity_product_uom")
                     )
-                    qty_picked = sum(move_to_link.move_line_ids.mapped("qty_picked"))
+                    qty_picked = sum(
+                        line.product_uom_id._compute_quantity(
+                            line.qty_picked, self.product_id.uom_id, round=False
+                        )
+                        for line in move_to_link.move_line_ids
+                    )
                     assigned_qty = min(
                         max(reserved_qty - qty_picked, 0.0), available_qty
                     )
@@ -730,7 +758,9 @@ class WizStockBarcodesReadPicking(models.TransientModel):
             for sml in stock_move_lines:
                 if not sml.move_id:
                     self.create_new_stock_move(sml)
-                move_lines_dic[sml.id] = sml.qty_picked
+                move_lines_dic[sml.id] = sml.product_uom_id._compute_quantity(
+                    sml.qty_picked, self.product_id.uom_id, round=False
+                )
             # Ensure that the state of stock_move linked to the sml read is assigned
             stock_move_lines.move_id.filtered(
                 lambda sm: sm.state == "draft"
@@ -777,7 +807,12 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         sml.move_id = new_move
 
     def update_fields_after_process_stock(self, moves):
-        self.picking_product_qty = sum(moves.mapped("quantity"))
+        self.picking_product_qty = sum(
+            move.product_uom._compute_quantity(
+                move.quantity, self.product_id.uom_id, round=False
+            )
+            for move in moves
+        )
 
     def check_done_conditions(self):
         res = super().check_done_conditions()
@@ -814,9 +849,7 @@ class WizStockBarcodesReadPicking(models.TransientModel):
         return res
 
     def get_lot_by_removal_strategy(self):
-        all_quants = self.env["stock.quant"]._gather(
-            self.product_id, self.location_id
-        )
+        all_quants = self.env["stock.quant"]._gather(self.product_id, self.location_id)
         quants = all_quants.filtered(lambda quant: quant.available_quantity > 0)[:1]
         # TODO: Perhaps update location_id from quant??
         self.lot_id = quants.lot_id
@@ -1034,9 +1067,19 @@ class WizStockBarcodesReadPicking(models.TransientModel):
                     todo_vals[key] = self._update_fill_record_values(
                         line, todo_vals[key]
                     )
-                # Max between the reserved and picked..
+                # Max between the reserved and picked quantities in move UoM.
                 move = line.move_id if is_stock_move_line_origin else line
-                move_qty_dic[move] += max(line.quantity, line.qty_picked)
+                if is_stock_move_line_origin:
+                    reserved_qty = line.product_uom_id._compute_quantity(
+                        line.quantity, move.product_uom, round=False
+                    )
+                    picked_qty = line.product_uom_id._compute_quantity(
+                        line.qty_picked, move.product_uom, round=False
+                    )
+                else:
+                    reserved_qty = line.quantity
+                    picked_qty = line.qty_picked
+                move_qty_dic[move] += max(reserved_qty, picked_qty)
         if is_stock_move_line_origin and self.picking_type_code != "incoming":
             for move in self.get_moves():
                 qty = move_qty_dic[move]

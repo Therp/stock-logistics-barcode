@@ -48,7 +48,7 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
 
         cls.barcode_option_group_out.barcode_guided_mode = False
         cls.barcode_option_group_in.barcode_guided_mode = False
-        # No depender de los datos de demo (base.res_partner_2 ya no existe en 19).
+        # Do not rely on demo data: base.res_partner_2 no longer exists in Odoo 19.
         cls.partner_agrolite = cls.env["res.partner"].create({"name": "Agrolite"})
         cls.picking_type_in = cls.env.ref("stock.picking_type_in")
         cls.picking_type_in.barcode_option_group_id = cls.barcode_option_group_in
@@ -363,13 +363,9 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
             self.wiz_scan_picking.message,
             "8411822222568 (Scan Product, Packaging, Lot / Serial)",
         )
-        # Scan a packaging barcode: nothing happens anymore.
-        # Odoo 19 removed product.packaging and its barcode: packagings are
-        # uom.uom records without a barcode field, so there is nothing to look
-        # up. The quantity stays where it was and the message reports that the
-        # code was not found.
+        # Scan a packaging barcode. The box contains 5 product units.
         self.action_barcode_scanned(wiz_scan_picking, "5420008510489")
-        self.assertEqual(sum(stock_move.move_line_ids.mapped("qty_picked")), 1.0)
+        self.assertEqual(stock_move.qty_picked, 5.0)
 
     def test_picking_wizard_scan_product_manual_entry(self):
         wiz_scan_picking = self.wiz_scan_picking.with_context(

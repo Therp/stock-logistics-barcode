@@ -7,6 +7,7 @@ import {FormController} from "@web/views/form/form_controller";
 import {KanbanController} from "@web/views/kanban/kanban_controller";
 import {ListController} from "@web/views/list/list_controller";
 import {_t} from "@web/core/l10n/translation";
+import {browser} from "@web/core/browser/browser";
 import {isAllowedBarcodeModel} from "../utils/barcodes_models_utils.esm";
 import {patch} from "@web/core/utils/patch";
 import {useEffect} from "@odoo/owl";
@@ -89,7 +90,7 @@ function setupView() {
         } else if (ev.keyCode === 120) {
             // F9
             const button = document.querySelector("button[name='action_clean_values']");
-            if (isVisible(button)) {
+            if (button && isVisible(button)) {
                 button.click();
             }
         } else if (ev.keyCode === 123 || ev.keyCode === 115) {
@@ -113,24 +114,24 @@ function setupView() {
 
     // Focus and select the input targeted by a focus notification
     const handleRecordFocus = (payload) => {
-        requestIdleCallback(() => {
+        browser.setTimeout(() => {
             // Build a robust selector: [name="..."] input
             let selector = "";
             if (window.CSS && typeof CSS.escape === "function") {
                 selector = `[name="${CSS.escape(payload.field_name)}"] input`;
             } else {
-                // Basic fallback (works si no hay caracteres especiales)
+                // Basic fallback when the field name needs no CSS escaping
                 selector = `[name="${payload.field_name}"] input`;
             }
-            setTimeout(() => {
+            browser.setTimeout(() => {
                 waitVisibleElement(selector, 5000)
                     .then((input) => {
                         input.focus();
                         input.select();
                     })
-                    .catch((err) => console.warn(err.message));
+                    .catch(() => undefined);
             }, 300);
-        });
+        }, 0);
     };
 
     // Notifications limited to the current record (sound, focus, message)
@@ -175,7 +176,7 @@ function setupView() {
         } else if (type === "actions_barcode") {
             handleActionsBarcode(payload);
         } else if (type === "actions_barcode_notification") {
-            notification.add(_t(payload?.message || ""), {
+            notification.add(payload?.message || "", {
                 type: payload?.message_type,
                 sticky: Boolean(payload?.sticky),
             });
@@ -217,15 +218,20 @@ function setupView() {
 
             // Create audio elements without jQuery
             // (not needed to append to DOM to play)
-            const soundOk = new Audio("/stock_barcodes/static/src/sounds/bell.wav");
+            const soundOk = new browser.Audio(
+                "/stock_barcodes/static/src/sounds/bell.wav"
+            );
             soundOk.preload = "auto";
-            const soundKo = new Audio("/stock_barcodes/static/src/sounds/error.wav");
+            const soundKo = new browser.Audio(
+                "/stock_barcodes/static/src/sounds/error.wav"
+            );
             soundKo.preload = "auto";
 
             // Store references on the component instance
             this.soundOk = soundOk;
             this.soundKo = soundKo;
 
+            busService.start();
             busService.subscribe("stock_barcodes_scan", handleNotification);
             // Inventory "Apply" button counter is pushed on this channel
             busService.subscribe(
@@ -258,10 +264,8 @@ function patchControllerSetup(Controller) {
     patch(Controller.prototype, {
         setup() {
             super.setup(...arguments);
-            // Guard por si props aún no están listas
             const resModel = this?.props?.resModel;
             if (resModel && isAllowedBarcodeModel(resModel)) {
-                // Ejecuta tu wiring (useEffect, bus, etc.)
                 setupView.call(this);
             }
         },

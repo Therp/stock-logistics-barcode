@@ -11,6 +11,7 @@
     "depends": [
         "barcodes",
         "stock",
+        "stock_move_line_qty_picked",
         "web_widget_numeric_step",
         "web",
         # mail is required by the test suite (mail_new_test_user)
@@ -24,6 +25,7 @@
         "views/stock_move_line_views.xml",
         "views/stock_picking_views.xml",
         "wizard/stock_barcodes_new_lot_views.xml",
+        "wizard/stock_barcodes_new_packaging_views.xml",
         "wizard/stock_barcodes_read_views.xml",
         "wizard/stock_barcodes_read_picking_views.xml",
         "wizard/stock_barcodes_read_todo_view.xml",
@@ -45,13 +47,11 @@
                 "/stock_barcodes/static/src/widgets/numeric_step.xml",
             ),
             "/stock_barcodes/static/src/views/kanban/stock_barcodes_kanban.xml",
-            (
-                "after",
-                "/web/static/src/views/view_button/view_button.xml",
-                "/stock_barcodes/static/src/widgets/view_button.xml",
-            ),
             "/stock_barcodes/static/src/views/actions/stock_barcode_main_menu.xml",
             "/stock_barcodes/static/src/**/*.scss",
+        ],
+        "web.assets_unit_tests": [
+            "stock_barcodes/static/tests/**/*.test.js",
         ],
     },
     "installable": True,
