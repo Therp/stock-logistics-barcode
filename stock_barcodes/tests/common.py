@@ -411,6 +411,7 @@ class TestCommonStockBarcodes(TransactionCase):
         cls.wiz_scan_read_todo = cls.WizScanReadTodo.create(
             {
                 "wiz_barcode_id": cls.wiz_scan.id,
+                "uom_id": cls.product_tracking.uom_id.id,
                 "line_ids": [
                     Command.create(
                         {

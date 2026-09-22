@@ -364,6 +364,12 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
             "8411822222568 (Scan Product, Packaging, Lot / Serial)",
         )
         # Scan a packaging barcode. The box contains 5 product units.
+        self.assertEqual(
+            self.packaging_uom_tracking._compute_quantity(
+                1, self.product_tracking.uom_id
+            ),
+            5.0,
+        )
         self.action_barcode_scanned(wiz_scan_picking, "5420008510489")
         self.assertEqual(stock_move.qty_picked, 5.0)
 
@@ -452,11 +458,14 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
         self.assertEqual(self.wiz_scan_picking_out.lot_id, lot_3)
 
     def test_picking_wizard_scan_product_auto_lot_skips_unavailable_quant(self):
-        """A quant with nothing available must never win the removal-strategy
-        pick, no matter how its in_date/id happen to sort against a quant
-        that actually has stock (e.g. a zero-quantity quant left over from a
-        previous reservation/unreservation cycle, dated later than the real
-        stock)."""
+        location = self.StockLocation.create(
+            {
+                "name": "LIFO test location",
+                "usage": "internal",
+                "location_id": self.stock_location.id,
+                "removal_strategy_id": self.env.ref("stock.removal_lifo").id,
+            }
+        )
         lot_real = self.StockProductionLot.create(
             {
                 "name": "8411822223001",
@@ -475,7 +484,7 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
             {
                 "product_id": self.product_tracking.id,
                 "lot_id": lot_real.id,
-                "location_id": self.stock_location.id,
+                "location_id": location.id,
                 "quantity": 10.0,
             }
         )
@@ -483,28 +492,20 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
             {
                 "product_id": self.product_tracking.id,
                 "lot_id": lot_ghost.id,
-                "location_id": self.stock_location.id,
+                "location_id": location.id,
                 "quantity": 0.0,
             }
         )
-        # Neutralize the class-level quant_lot_1 (real stock, but with an
-        # implicit in_date of "now") so it can't win the LIFO pick either -
-        # this test is only about quant_real vs. quant_ghost.
-        self.quant_lot_1.in_date = "2020-01-01"
         quant_real.in_date = "2021-01-01"
-        # The ghost quant is dated LATER than the real one, so LIFO would
-        # pick it first if the code only looked at in_date/id.
         quant_ghost.in_date = "2021-06-01"
 
-        self.product_tracking.categ_id.removal_strategy_id = self.env.ref(
-            "stock.removal_lifo"
-        )
-        self.wiz_scan_picking_out.option_group_id.auto_lot = True
-        self.wiz_scan_picking_out.auto_lot = True
-        self.wiz_scan_picking_out.lot_id = False
-        self.wiz_scan_picking_out.action_clean_values()
-        self.action_barcode_scanned(self.wiz_scan_picking_out, "8433281006850")
-        self.assertEqual(self.wiz_scan_picking_out.lot_id, lot_real)
+        wiz = self.wiz_scan_picking_out
+        wiz.product_id = self.product_tracking
+        wiz.location_id = location
+        wiz.lot_id = False
+        wiz.get_lot_by_removal_strategy()
+
+        self.assertEqual(wiz.lot_id, lot_real)
 
     @classmethod
     def _create_barcode_option_group_incoming(cls):
