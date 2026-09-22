@@ -453,7 +453,7 @@ class WizStockBarcodesRead(models.AbstractModel):
                     if not self.location_id and self.option_group_id.code != "IN":
                         self.location_id = locations
 
-    def process_barcode_packaging_id(self):
+    def process_barcode_packaging_uom_id(self):
         if not self.env.user.has_group("uom.group_uom"):
             return False
         packaging = self.env["product.uom"].search(
@@ -463,6 +463,9 @@ class WizStockBarcodesRead(models.AbstractModel):
             return False
         self.action_packaging_scaned_post(packaging)
         return True
+
+    def process_barcode_packaging_id(self):
+        return self.process_barcode_packaging_uom_id()
 
     def process_barcode(self, barcode):
         if not self:

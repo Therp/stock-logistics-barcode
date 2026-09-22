@@ -395,12 +395,12 @@ class TestStockBarcodes(TestCommonStockBarcodes):
         result = wiz_scan_user.process_barcode_result_package_id()
         self.assertTrue(result)
 
-    def test_process_barcode_packaging_id(self):
-        self.assertFalse(self.wiz_scan.process_barcode_packaging_id())
+    def test_process_barcode_packaging_uom_id(self):
+        self.assertFalse(self.wiz_scan.process_barcode_packaging_uom_id())
 
         wiz_scan_user = self.wiz_scan.with_user(self.user_test_packing)
         wiz_scan_user.barcode = self.packaging_tracking.barcode
-        self.assertTrue(wiz_scan_user.process_barcode_packaging_id())
+        self.assertTrue(wiz_scan_user.process_barcode_packaging_uom_id())
         self.assertEqual(wiz_scan_user.product_id, self.product_tracking)
         self.assertEqual(wiz_scan_user.packaging_uom_id, self.packaging_uom_tracking)
         self.assertEqual(wiz_scan_user.product_qty, 5.0)
