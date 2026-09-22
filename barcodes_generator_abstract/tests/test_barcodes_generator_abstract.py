@@ -37,12 +37,17 @@ class TestBarcodesGeneratorAbstract(BaseCommon):
             }
         )
 
-        cls.user_fake = cls.env["res.users.tester"].create(
-            {
-                "name": "Test user",
-                "login": "testing_01",
-            }
-        )
+        config = cls.env["ir.config_parameter"].sudo()
+        digest_emails = config.set_param("digest.default_digest_emails", False)
+        try:
+            cls.user_fake = cls.env["res.users.tester"].create(
+                {
+                    "name": "Test user",
+                    "login": "testing_01",
+                }
+            )
+        finally:
+            config.set_param("digest.default_digest_emails", digest_emails)
 
     def test_generate_sequence_manually(self):
         self.user_fake.barcode_rule_id = self.barcode_rule_fake
