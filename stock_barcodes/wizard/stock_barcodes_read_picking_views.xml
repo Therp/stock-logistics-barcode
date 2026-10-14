@@ -87,6 +87,15 @@
                         class="fa fa-share text-center d-sm-none oe_span_small_icon"
                         title="Destination Location"
                     />
+                    <button
+                        name="action_select_location_stock"
+                        type="object"
+                        icon="fa-map-marker"
+                        title="Select a destination location with stock"
+                        class="btn btn-info btn-sm"
+                        context="{'location_stock_field': 'location_dest_id', 'location_stock_reverse': True}"
+                        invisible="not product_id or picking_type_code not in ('incoming', 'internal')"
+                    />
                     <field
                         name="location_dest_id"
                         options="{'no_create': True, 'no_open': True}"

@@ -16,6 +16,20 @@ from .common import TestCommonStockBarcodes
 
 @tagged("post_install", "-at_install")
 class TestStockBarcodes(TestCommonStockBarcodes):
+    def test_repeated_reading_accumulates_before_manual_confirmation(self):
+        wiz = self.wiz_scan
+        wiz.option_group_id.accumulate_read_quantity = True
+        wiz.option_group_id.is_manual_confirm = True
+        wiz.invalidate_recordset(["is_manual_confirm"])
+        wiz.product_id = self.product_wo_tracking
+        wiz.product_qty = 1.0
+        option = wiz.option_group_id.option_ids.filtered(
+            lambda op: op.field_name == "product_id"
+        )[:1]
+        self.assertTrue(option)
+        wiz._accumulate_read_qty(option, wiz._get_read_item(), wiz._get_read_qty())
+        self.assertEqual(wiz.product_qty, 2.0)
+
     def test_wizard_scan_location(self):
         self.action_barcode_scanned(self.wiz_scan, "8411322222568")
         self.assertEqual(self.wiz_scan.location_id, self.location_1)

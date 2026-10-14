@@ -11,10 +11,9 @@
                     icon="fa-barcode"
                     type="object"
                     help="Start barcode interface"
-                    invisible="state not in ('confirmed', 'assigned')"
                 >
                     <div class="o_form_field o_stat_info">
-                        <span class="o_stat_text">Scan barcodes</span>
+                        <span class="o_stat_text">Barcode Interface</span>
                     </div>
                 </button>
             </div>

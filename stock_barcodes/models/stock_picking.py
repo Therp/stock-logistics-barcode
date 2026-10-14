@@ -3,6 +3,7 @@
 import logging
 
 from odoo import models
+from odoo.exceptions import UserError
 
 _logger = logging.getLogger(__name__)
 
@@ -32,6 +33,11 @@ class StockPicking(models.Model):
         return vals
 
     def action_barcode_scan(self, option_group=False, wiz=False):
+        self.ensure_one()
+        if self.state in ("done", "cancel"):
+            raise UserError(
+                self.env._("Cannot scan a completed or cancelled transfer.")
+            )
         option_group = (
             option_group
             or self.picking_type_id.barcode_option_group_id

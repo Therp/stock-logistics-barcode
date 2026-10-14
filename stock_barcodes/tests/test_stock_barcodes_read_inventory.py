@@ -69,10 +69,9 @@ class TestStockBarcodesReadInventory(TestCommonStockBarcodes):
         self.assertFalse(self.wiz_scan_read_inventory.auto_lot)
 
     def test_accumulate_read_quantity(self):
-        # With accumulate_read_quantity the scanned quantity is added to the
-        # existing inventory quant instead of overwriting it.
+        # By default, inventory readings add to the counted quantity.
         wiz = self.wiz_scan_read_inventory
-        wiz.option_group_id.accumulate_read_quantity = True
+        wiz.option_group_id.no_increase_qty_done = False
         wiz.product_id = self.product_tracking
         wiz.location_id = self.location_1
         wiz.lot_id = self.lot_1
@@ -91,10 +90,9 @@ class TestStockBarcodesReadInventory(TestCommonStockBarcodes):
         self.assertEqual(quant.inventory_quantity, 5.0)
 
     def test_overwrite_read_quantity(self):
-        # Without accumulate_read_quantity the scanned quantity overwrites the
-        # current inventory quantity.
+        # Replace quantity on each reading overwrites the counted quantity.
         wiz = self.wiz_scan_read_inventory
-        wiz.option_group_id.accumulate_read_quantity = False
+        wiz.option_group_id.no_increase_qty_done = True
         wiz.product_id = self.product_tracking
         wiz.location_id = self.location_1
         wiz.lot_id = self.lot_1
@@ -111,6 +109,22 @@ class TestStockBarcodesReadInventory(TestCommonStockBarcodes):
             limit=1,
         )
         self.assertEqual(quant.inventory_quantity, 2.0)
+
+    def test_edit_inventory_quant_replaces_even_when_scans_accumulate(self):
+        wiz = self.wiz_scan_read_inventory
+        wiz.option_group_id.no_increase_qty_done = False
+        wiz.product_id = self.product_tracking
+        wiz.location_id = self.location_1
+        wiz.lot_id = self.lot_1
+        wiz.product_qty = 3
+        self.assertTrue(wiz._add_inventory_quant())
+        quant = self.StockQuant.search(wiz._inventory_quant_domain(), limit=1)
+        self.assertTrue(quant)
+        quant.with_context(wiz_barcode_id=wiz.id).action_barcode_inventory_quant_edit()
+        self.assertEqual(wiz.edit_inventory_quant_id, quant)
+        wiz.product_qty = 2
+        self.assertTrue(wiz._add_inventory_quant())
+        self.assertEqual(quant.inventory_quantity, 2)
 
     def test_compute_inventory_quant_ids_side_effect_free(self):
         # The compute must not emit bus notifications nor write any record.

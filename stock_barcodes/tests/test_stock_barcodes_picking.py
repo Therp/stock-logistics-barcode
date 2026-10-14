@@ -141,6 +141,135 @@ class TestStockBarcodesPicking(TestCommonStockBarcodes):
         action = cls.picking_out_01.action_barcode_scan()
         cls.wiz_scan_picking_out = cls.ScanReadPicking.browse(action["res_id"])
 
+    def test_barcode_action_rejects_cancelled_picking(self):
+        picking = self.picking_out_01.copy()
+        picking.action_cancel()
+        with self.assertRaisesRegex(UserError, "completed or cancelled transfer"):
+            picking.action_barcode_scan()
+
+    def test_barcode_action_rejects_completed_picking(self):
+        picking = self.picking_in_01
+        picking.state = "done"
+        self.assertEqual(picking.state, "done")
+        with self.assertRaisesRegex(UserError, "completed or cancelled transfer"):
+            picking.action_barcode_scan()
+
+    def test_scan_different_serial_from_reserved_serial(self):
+        product = self.product_tracking_serial
+        lot_reserved = self.StockProductionLot.create(
+            {
+                "name": "SCAN-RESERVED-01",
+                "product_id": product.id,
+                "company_id": self.company.id,
+            }
+        )
+        self.StockQuant._update_available_quantity(
+            product, self.stock_location, 1, lot_id=lot_reserved
+        )
+        picking = self.StockPicking.create(
+            {
+                "picking_type_id": self.picking_type_out.id,
+                "location_id": self.stock_location.id,
+                "location_dest_id": self.customer_location.id,
+                "move_ids": [
+                    Command.create(
+                        {
+                            "product_id": product.id,
+                            "product_uom": product.uom_id.id,
+                            "product_uom_qty": 1,
+                            "location_id": self.stock_location.id,
+                            "location_dest_id": self.customer_location.id,
+                        }
+                    )
+                ],
+            }
+        )
+        picking.action_confirm()
+        picking.action_assign()
+        self.assertEqual(picking.move_line_ids.lot_id, lot_reserved)
+        lot_scanned = self.StockProductionLot.create(
+            {
+                "name": "SCAN-OTHER-02",
+                "product_id": product.id,
+                "company_id": self.company.id,
+            }
+        )
+        self.StockQuant._update_available_quantity(
+            product, self.stock_location, 1, lot_id=lot_scanned
+        )
+        action = picking.action_barcode_scan(option_group=self.barcode_option_group_out)
+        wiz = self.ScanReadPicking.browse(action["res_id"])
+        self.action_barcode_scanned(wiz, lot_scanned.name)
+        scanned_lines = picking.move_line_ids.filtered(
+            lambda line: line.lot_id == lot_scanned and line.qty_picked
+        )
+        self.assertEqual(sum(scanned_lines.mapped("qty_picked")), 1)
+        self.assertEqual(
+            sum(
+                picking.move_line_ids.filtered(
+                    lambda line: line.lot_id == lot_reserved
+                ).mapped("qty_picked")
+            ),
+            0,
+        )
+        wiz.action_validate_picking()
+        self.assertEqual(picking.state, "done")
+        self.assertEqual(
+            sum(
+                picking.move_line_ids.filtered(
+                    lambda line: line.lot_id == lot_scanned
+                ).mapped("quantity_product_uom")
+            ),
+            1,
+        )
+        self.assertEqual(
+            sum(
+                picking.move_line_ids.filtered(
+                    lambda line: line.lot_id == lot_reserved
+                ).mapped("quantity_product_uom")
+            ),
+            0,
+        )
+
+    def test_product_info_action_and_location_selection(self):
+        self.StockQuant._update_available_quantity(
+            self.product_wo_tracking, self.location_1, 3
+        )
+        wiz = self.wiz_scan_picking_out
+        wiz.product_id = self.product_wo_tracking
+        action = wiz.action_open_product_info()
+        self.assertEqual(action["target"], "new")
+        info = self.env[action["res_model"]].browse(action["res_id"])
+        self.assertEqual(info.product_id, wiz.product_id)
+        self.assertEqual(info.res_id, wiz.id)
+        self.assertEqual(info.location_field, "location_id")
+        location_line = info.line_ids.filtered(
+            lambda line: line.location_id == self.location_1
+        )
+        self.assertEqual(len(location_line), 1)
+        self.assertEqual(location_line.quantity, 3)
+        result = location_line.action_select()
+        self.assertEqual(result["type"], "ir.actions.act_window_close")
+        self.assertEqual(wiz.location_id, self.location_1)
+
+    def test_incoming_product_info_sets_destination(self):
+        self.StockQuant._update_available_quantity(
+            self.product_wo_tracking, self.location_2, 2
+        )
+        wiz = self.wiz_scan_picking
+        wiz.product_id = self.product_wo_tracking
+        action = wiz.action_open_product_info()
+        info = self.env[action["res_model"]].browse(action["res_id"])
+        self.assertEqual(info.location_field, "location_dest_id")
+        source = wiz.location_id
+        location_line = info.line_ids.filtered(
+            lambda line: line.location_id == self.location_2
+        )
+        self.assertEqual(len(location_line), 1)
+        location_line.action_select()
+        self.assertEqual(wiz.location_dest_id, self.location_2)
+        self.assertEqual(wiz.location_id, source)
+
     def test_incoming_scan_ignores_vendor_counterpart_qty(self):
         # On a reception, scanning a plain product must add the scanned
         # increment (+1), never the quantity of a quant. With

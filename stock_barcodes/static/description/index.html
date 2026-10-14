@@ -431,19 +431,21 @@ modules extend (GS1, batch picking, …).</li>
 </li>
 <li><a class="reference internal" href="#known-issues-roadmap" id="toc-entry-20">Known issues / Roadmap</a></li>
 <li><a class="reference internal" href="#changelog" id="toc-entry-21">Changelog</a><ul>
-<li><a class="reference internal" href="#section-1" id="toc-entry-22">18.0.1.3.0 (2026-07-08)</a></li>
-<li><a class="reference internal" href="#section-2" id="toc-entry-23">18.0.1.1.0 (2026-06-22)</a></li>
-<li><a class="reference internal" href="#section-3" id="toc-entry-24">11.0.1.1.0 (2019-09-24)</a></li>
-<li><a class="reference internal" href="#section-4" id="toc-entry-25">13.0.1.1.1 (2021-02-06)</a></li>
-<li><a class="reference internal" href="#section-5" id="toc-entry-26">14.0.1.0.0 (2021-04-05)</a></li>
-<li><a class="reference internal" href="#section-6" id="toc-entry-27">16.0.1.0.0 (2025-01-23)</a></li>
+<li><a class="reference internal" href="#section-1" id="toc-entry-22">18.0.1.6.0 (2026-10-02)</a></li>
+<li><a class="reference internal" href="#section-2" id="toc-entry-23">18.0.1.5.0 (2026-09-29)</a></li>
+<li><a class="reference internal" href="#section-3" id="toc-entry-24">18.0.1.3.0 (2026-07-08)</a></li>
+<li><a class="reference internal" href="#section-4" id="toc-entry-25">18.0.1.1.0 (2026-06-22)</a></li>
+<li><a class="reference internal" href="#section-5" id="toc-entry-26">11.0.1.1.0 (2019-09-24)</a></li>
+<li><a class="reference internal" href="#section-6" id="toc-entry-27">13.0.1.1.1 (2021-02-06)</a></li>
+<li><a class="reference internal" href="#section-7" id="toc-entry-28">14.0.1.0.0 (2021-04-05)</a></li>
+<li><a class="reference internal" href="#section-8" id="toc-entry-29">16.0.1.0.0 (2025-01-23)</a></li>
 </ul>
 </li>
-<li><a class="reference internal" href="#bug-tracker" id="toc-entry-28">Bug Tracker</a></li>
-<li><a class="reference internal" href="#credits" id="toc-entry-29">Credits</a><ul>
-<li><a class="reference internal" href="#authors" id="toc-entry-30">Authors</a></li>
-<li><a class="reference internal" href="#contributors" id="toc-entry-31">Contributors</a></li>
-<li><a class="reference internal" href="#maintainers" id="toc-entry-32">Maintainers</a></li>
+<li><a class="reference internal" href="#bug-tracker" id="toc-entry-30">Bug Tracker</a></li>
+<li><a class="reference internal" href="#credits" id="toc-entry-31">Credits</a><ul>
+<li><a class="reference internal" href="#authors" id="toc-entry-32">Authors</a></li>
+<li><a class="reference internal" href="#contributors" id="toc-entry-33">Contributors</a></li>
+<li><a class="reference internal" href="#maintainers" id="toc-entry-34">Maintainers</a></li>
 </ul>
 </li>
 </ul>
@@ -759,7 +761,38 @@ migration cycle.</li>
 <div class="section" id="changelog">
 <h2><a class="toc-backref" href="#toc-entry-21">Changelog</a></h2>
 <div class="section" id="section-1">
-<h3><a class="toc-backref" href="#toc-entry-22">18.0.1.3.0 (2026-07-08)</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-22">18.0.1.6.0 (2026-10-02)</a></h3>
+<ul class="simple">
+<li>[ADD] Product information: a button next to the read product opens its
+on hand, incoming, outgoing and forecasted quantities and its stock in
+each location, ordered by the removal strategy (reversed on
+receptions). Tapping a location fills the screen location.</li>
+<li>[ADD] Buttons next to the source and destination locations list only
+the locations with stock to pick one, the destination ones in reverse
+order. On small screens the field icons replace these buttons.</li>
+</ul>
+</div>
+<div class="section" id="section-2">
+<h3><a class="toc-backref" href="#toc-entry-23">18.0.1.5.0 (2026-09-29)</a></h3>
+<ul class="simple">
+<li>[IMP] <em>Replace quantity on each reading</em> (<tt class="docutils literal">no_increase_qty_done</tt>)
+now also applies to inventories: a reading is added to the counted
+quantity unless it is set. <em>Accumulate read quantity</em> is renamed to
+<em>Accumulate repeated readings</em> and adds one unit (or packaging) when
+the same item is read again before a manual confirmation. The
+migration keeps the inventory behavior of each database and leaves the
+new accumulation disabled.</li>
+<li>[FIX] Confirming a counted inventory line edited from the list added
+its quantity again (doubling it) when readings were added; the edited
+line now always replaces its counted quantity.</li>
+<li>[FIX] Map the 15.0 <tt class="docutils literal">move_lines</tt> value of <em>Source pending moves</em> to
+<tt class="docutils literal">move_ids</tt>.</li>
+<li>[REM] Remove the unused <em>Show all quantities</em> and <em>Allow direct
+partial delivery</em> options.</li>
+</ul>
+</div>
+<div class="section" id="section-3">
+<h3><a class="toc-backref" href="#toc-entry-24">18.0.1.3.0 (2026-07-08)</a></h3>
 <ul class="simple">
 <li>[FIX] Restore bus notifications broken by the 18.0 bus API: scanning
 an action barcode from the main menu (whose client-side scanner
@@ -807,8 +840,8 @@ are kept as deprecated aliases; modules overriding them must move
 their override to the new names.</li>
 </ul>
 </div>
-<div class="section" id="section-2">
-<h3><a class="toc-backref" href="#toc-entry-23">18.0.1.1.0 (2026-06-22)</a></h3>
+<div class="section" id="section-4">
+<h3><a class="toc-backref" href="#toc-entry-25">18.0.1.1.0 (2026-06-22)</a></h3>
 <ul class="simple">
 <li>[ADD] New option <em>Show fixed dest. location</em> on barcode option groups.
 It shows, in the pending moves list, the destination location already
@@ -818,28 +851,28 @@ keeping its destination instead of duplicating it at the generic
 picking destination. It never recomputes the putaway strategy.</li>
 </ul>
 </div>
-<div class="section" id="section-3">
-<h3><a class="toc-backref" href="#toc-entry-24">11.0.1.1.0 (2019-09-24)</a></h3>
+<div class="section" id="section-5">
+<h3><a class="toc-backref" href="#toc-entry-26">11.0.1.1.0 (2019-09-24)</a></h3>
 <ul class="simple">
 <li>[ADD] New feature. User can uses barcode interface in picking
 operations.</li>
 </ul>
 </div>
-<div class="section" id="section-4">
-<h3><a class="toc-backref" href="#toc-entry-25">13.0.1.1.1 (2021-02-06)</a></h3>
+<div class="section" id="section-6">
+<h3><a class="toc-backref" href="#toc-entry-27">13.0.1.1.1 (2021-02-06)</a></h3>
 <ul class="simple">
 <li>[ADD] New feature. Add option to get lots automatically based on
 removal strategy in inventory.</li>
 </ul>
 </div>
-<div class="section" id="section-5">
-<h3><a class="toc-backref" href="#toc-entry-26">14.0.1.0.0 (2021-04-05)</a></h3>
+<div class="section" id="section-7">
+<h3><a class="toc-backref" href="#toc-entry-28">14.0.1.0.0 (2021-04-05)</a></h3>
 <ul class="simple">
 <li>[ADD] New feature. Add security for users.</li>
 </ul>
 </div>
-<div class="section" id="section-6">
-<h3><a class="toc-backref" href="#toc-entry-27">16.0.1.0.0 (2025-01-23)</a></h3>
+<div class="section" id="section-8">
+<h3><a class="toc-backref" href="#toc-entry-29">16.0.1.0.0 (2025-01-23)</a></h3>
 <ul class="simple">
 <li>[IMP] Improved views to optimize navigation and functionality.
 Intuitive and mobile-friendly views. Visual improvement of the main
@@ -850,7 +883,7 @@ document for the barcodes of the selected barcode actions.</li>
 </div>
 </div>
 <div class="section" id="bug-tracker">
-<h2><a class="toc-backref" href="#toc-entry-28">Bug Tracker</a></h2>
+<h2><a class="toc-backref" href="#toc-entry-30">Bug Tracker</a></h2>
 <p>Bugs are tracked on <a class="reference external" href="https://github.com/OCA/stock-logistics-barcode/issues">GitHub Issues</a>.
 In case of trouble, please check there if your issue has already been reported.
 If you spotted it first, help us to smash it by providing a detailed and welcomed
@@ -858,15 +891,15 @@ If you spotted it first, help us to smash it by providing a detailed and welcome
 <p>Do not contact contributors directly about support or help with technical issues.</p>
 </div>
 <div class="section" id="credits">
-<h2><a class="toc-backref" href="#toc-entry-29">Credits</a></h2>
+<h2><a class="toc-backref" href="#toc-entry-31">Credits</a></h2>
 <div class="section" id="authors">
-<h3><a class="toc-backref" href="#toc-entry-30">Authors</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-32">Authors</a></h3>
 <ul class="simple">
 <li>Tecnativa</li>
 </ul>
 </div>
 <div class="section" id="contributors">
-<h3><a class="toc-backref" href="#toc-entry-31">Contributors</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-33">Contributors</a></h3>
 <ul class="simple">
 <li><a class="reference external" href="https://www.tecnativa.com">Tecnativa</a>:<ul>
 <li>Sergio Teruel</li>
@@ -895,7 +928,7 @@ If you spotted it first, help us to smash it by providing a detailed and welcome
 </ul>
 </div>
 <div class="section" id="maintainers">
-<h3><a class="toc-backref" href="#toc-entry-32">Maintainers</a></h3>
+<h3><a class="toc-backref" href="#toc-entry-34">Maintainers</a></h3>
 <p>This module is maintained by the OCA.</p>
 <a class="reference external image-reference" href="https://odoo-community.org">
 <img alt="Odoo Community Association" src="https://odoo-community.org/logo.png" />

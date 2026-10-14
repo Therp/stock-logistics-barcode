@@ -71,6 +71,15 @@
                                         class="fa fa-map-marker d-sm-none oe_span_small_icon"
                                         title="Source Location"
                                     />
+                                    <button
+                                        name="action_select_location_stock"
+                                        type="object"
+                                        icon="fa-map-marker"
+                                        title="Select a location with stock"
+                                        class="btn btn-info btn-sm"
+                                        context="{'location_stock_field': 'location_id', 'location_stock_reverse': False}"
+                                        invisible="not product_id"
+                                    />
                                     <field
                                         name="location_id"
                                         options="{'no_create': True, 'no_open': True}"
@@ -168,11 +177,19 @@
                                         class="h5"
                                     />
                                     <button
+                                        name="action_open_product_info"
+                                        type="object"
+                                        icon="fa-info-circle"
+                                        title="Product information"
+                                        class="btn btn-info btn-sm"
+                                        invisible="not product_id"
+                                    />
+                                    <button
                                         class="btn-sm float-end btn-warning oe_kanban_action_button btn mr4"
                                         name="action_clean_product"
                                         type="object"
                                         icon="fa-trash fa-1x"
-                                        title="Clean product"
+                                        title="Clear product selection (previous scans are kept)"
                                         invisible="product_id == False"
                                     />
                                 </div>
@@ -251,7 +268,7 @@
                                 col="2"
                             >
                                 <div class="m-0" colspan="2">
-                                    <strong class="d-none d-sm-block">Total Qty</strong>
+                                    <strong>Total Qty</strong>
                                     <span
                                         class="fa fa-hashtag d-sm-none oe_span_small_icon"
                                         title="Total Quantity"
@@ -379,7 +396,7 @@
                             name="action_clean_values"
                             type="object"
                             icon="fa-trash-o"
-                            title="Clean Values"
+                            title="Clear current inputs (previous scans are kept)"
                             class="btn-warning w-100 oe_kanban_action_button btn-sm
                                         text-uppercase d-flex justify-content-center align-items-center fs-2"
                             invisible="display_menu or not manual_entry"

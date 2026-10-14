@@ -102,11 +102,9 @@ class StockBarcodesOptionGroup(models.Model):
         """,
     )
     accumulate_read_quantity = fields.Boolean(
-        help="""
-            If checked quantity will be accumulated to the
-            existing record instead of overwrite it with
-            the new quantity value
-        """,
+        string="Accumulate repeated readings",
+        help="With manual confirmation, repeated readings of the same "
+        "product, lot or packaging add to the quantity to confirm.",
     )
     display_notification = fields.Boolean(
         string="Display Odoo notifications",
@@ -152,7 +150,9 @@ class StockBarcodesOptionGroup(models.Model):
         help="If checked, the owner will be displayed in the inventory settings view.",
     )
     no_increase_qty_done = fields.Boolean(
-        string="Do not increase qty done on each scan",
+        string="Replace quantity on each reading",
+        help="Replace the previously recorded picked or inventory quantity "
+        "instead of adding to it.",
     )
     show_form_scan = fields.Boolean(default=True)
     search_picking_from_product = fields.Selection(
