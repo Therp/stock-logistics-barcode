@@ -1,4 +1,6 @@
+import "../src/utils/barcode_handler_field.esm.js";
 import {afterEach, expect, test} from "@odoo/hoot";
+import {BarcodeHandlerField} from "@barcodes/barcode_handler_field";
 import {StockBarcodesKanbanRenderer} from "../src/views/kanban/kanban_renderer.esm";
 import {StockBarcodesMainMenu} from "../src/views/actions/stock_barcode_main_menu.esm";
 import {isAllowedBarcodeModel} from "../src/utils/barcodes_models_utils.esm";
@@ -118,4 +120,63 @@ test("kanban update reveals the selected operation", () => {
     StockBarcodesKanbanRenderer.prototype._showEnabledOperation.call(renderer);
 
     expect(operation.classList.contains("d-none")).toBe(false);
+});
+
+test("wizard barcode scan waits for onchange before processing", async () => {
+    const events = [];
+    let releaseUpdate = null;
+    const updateCompleted = new Promise((resolve) => {
+        releaseUpdate = resolve;
+    });
+    const button = document.createElement("button");
+    button.id = "dummy_on_barcode_scanned";
+    button.addEventListener("click", () => events.push("process"));
+    document.body.appendChild(button);
+
+    const widget = {
+        props: {
+            name: "_barcode_scanned",
+            record: {
+                resModel: "wiz.stock.barcodes.read.picking",
+                async update(value) {
+                    expect(value).toEqual({_barcode_scanned: "SERIAL-0001"});
+                    events.push("update");
+                    await updateCompleted;
+                    events.push("onchange complete");
+                },
+            },
+        },
+    };
+
+    const scan = BarcodeHandlerField.prototype.onBarcodeScanned.call(widget, {
+        detail: {barcode: "SERIAL-0001"},
+    });
+    expect(events).toEqual(["update"]);
+    releaseUpdate();
+    await scan;
+    expect(events).toEqual(["update", "onchange complete", "process"]);
+});
+
+test("barcode handler outside OCA wizard keeps standard Odoo behavior", async () => {
+    const updates = [];
+    const button = document.createElement("button");
+    button.id = "dummy_on_barcode_scanned";
+    button.addEventListener("click", () => updates.push("incorrect click"));
+    document.body.appendChild(button);
+
+    await BarcodeHandlerField.prototype.onBarcodeScanned.call(
+        {
+            props: {
+                name: "_barcode_scanned",
+                record: {
+                    resModel: "stock.picking",
+                    update(value) {
+                        updates.push(value);
+                    },
+                },
+            },
+        },
+        {detail: {barcode: "SERIAL-0002"}}
+    );
+    expect(updates).toEqual([{_barcode_scanned: "SERIAL-0002"}]);
 });
