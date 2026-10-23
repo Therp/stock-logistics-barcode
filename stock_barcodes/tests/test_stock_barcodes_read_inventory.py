@@ -184,9 +184,9 @@ class TestStockBarcodesReadInventory(TestCommonStockBarcodes):
                 },
             )
 
-    def test_refresh_inventory_quants_assigns_owner(self):
-        # When show_owner is enabled and an owner is set, refreshing stamps the
-        # owner on every displayed quant.
+    def test_refresh_inventory_quants_preserves_existing_owner(self):
+        # Ownership is selected on creation and must never be rewritten by a
+        # subsequent refresh with another owner selected in the wizard.
         wiz = self.wiz_scan_read_inventory
         wiz.option_group_id.show_owner = True
         wiz.invalidate_recordset(["show_owner"])
@@ -196,12 +196,25 @@ class TestStockBarcodesReadInventory(TestCommonStockBarcodes):
         wiz.lot_id = self.lot_1
         wiz.product_qty = 3
         self.assertTrue(wiz._add_inventory_quant())
-        # inventory_quant_ids does not depend on the quants, refresh the cache
-        # so the newly created quant is taken into account.
+        original_quant = self.StockQuant.search(wiz._inventory_quant_domain(), limit=1)
+        self.assertTrue(original_quant)
+        self.assertEqual(original_quant.owner_id, self.test_partner_id)
+
+        second_owner = self.env["res.partner"].create(
+            {"name": "Other barcode inventory owner"}
+        )
+        wiz.owner_id = second_owner
         wiz.invalidate_recordset(["inventory_quant_ids"])
         with patch.object(type(wiz), "send_bus_done"):
             wiz._refresh_inventory_quants()
-        self.assertTrue(wiz.inventory_quant_ids)
-        self.assertTrue(
-            all(q.owner_id == self.test_partner_id for q in wiz.inventory_quant_ids)
-        )
+        self.assertEqual(original_quant.owner_id, self.test_partner_id)
+        self.assertFalse(self.StockQuant.search(wiz._inventory_quant_domain(), limit=1))
+
+        # A reading for a second owner creates/updates a separate quant.
+        wiz.product_qty = 2
+        self.assertTrue(wiz._add_inventory_quant())
+        second_quant = self.StockQuant.search(wiz._inventory_quant_domain(), limit=1)
+        self.assertTrue(second_quant)
+        self.assertNotEqual(second_quant, original_quant)
+        self.assertEqual(second_quant.owner_id, second_owner)
+        self.assertEqual(original_quant.owner_id, self.test_partner_id)

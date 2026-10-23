@@ -80,12 +80,13 @@ class StockBarcodesAction(models.Model):
 
     @api.constrains("context")
     def _constrains_context(self):
-        if self.context and not bool(
-            re.match(REGEX.get("context", False), self.context)
-        ):
-            raise ValidationError(
-                self.env._("There can be no spaces at the beginning or end.")
-            )
+        for action in self:
+            if action.context and not bool(
+                re.match(REGEX.get("context", False), action.context)
+            ):
+                raise ValidationError(
+                    self.env._("There can be no spaces at the beginning or end.")
+                )
 
     def _count_elements(self):
         res_model = self.action_window_id.res_model

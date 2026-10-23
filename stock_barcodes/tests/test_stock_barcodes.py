@@ -146,6 +146,22 @@ class TestStockBarcodes(TestCommonStockBarcodes):
                 }
             )
 
+    def test_context_constraint_on_batch_create(self):
+        actions = self.StockBarcodeAction.create(
+            [
+                {"name": "First action", "context": "{}"},
+                {"name": "Second action", "context": "{'foo': True}"},
+            ]
+        )
+        actions._constrains_context()
+        with self.assertRaises(ValidationError):
+            self.StockBarcodeAction.create(
+                [
+                    {"name": "Valid action", "context": "{}"},
+                    {"name": "Invalid action", "context": "  {'foo': True}"},
+                ]
+            )
+
     def test_compute_show_form_scan(self):
         option_group_id = self.env["stock.barcodes.option.group"].create(
             {"name": "Option Group Visibility"}

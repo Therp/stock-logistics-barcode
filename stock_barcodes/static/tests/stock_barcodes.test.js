@@ -74,23 +74,13 @@ test("kanban scanner does nothing outside stock pickings", async () => {
     expect(rpcCalled).toBe(false);
 });
 
-test("kanban scanner opens the action returned by stock picking", async () => {
+test("kanban header opens OCA barcode menu without an empty picking RPC", async () => {
     const calls = [];
-    const action = {
-        type: "ir.actions.act_window",
-        res_model: "wiz.stock.barcodes.read.picking",
-    };
     const renderer = {
         showMessageScanProductPackage: true,
-        orm: {
-            call: async (...args) => {
-                calls.push(args);
-                return action;
-            },
-        },
         action: {
             doAction: async (value) => {
-                calls.push(["doAction", value]);
+                calls.push(value);
                 return "done";
             },
         },
@@ -99,10 +89,7 @@ test("kanban scanner opens the action returned by stock picking", async () => {
     const result =
         await StockBarcodesKanbanRenderer.prototype.openBarcodeScanner.call(renderer);
 
-    expect(calls).toEqual([
-        ["stock.picking", "action_barcode_scan", [[], false, false]],
-        ["doAction", action],
-    ]);
+    expect(calls).toEqual(["stock_barcodes.action_stock_barcodes_action_client"]);
     expect(result).toBe("done");
 });
 

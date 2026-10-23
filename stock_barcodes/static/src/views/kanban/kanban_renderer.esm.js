@@ -13,7 +13,6 @@ export class StockBarcodesKanbanRenderer extends KanbanRenderer {
 
     setup() {
         super.setup();
-        this.orm = useService("orm");
         this.action = useService("action");
         this.busService = useService("bus_service");
         this.barcodeState = useState({enableCurrentOperation: 0});
@@ -72,11 +71,10 @@ export class StockBarcodesKanbanRenderer extends KanbanRenderer {
         if (!this.showMessageScanProductPackage) {
             return;
         }
-        const action = await this.orm.call("stock.picking", "action_barcode_scan", [
-            [],
-            false,
-            false,
-        ]);
-        return this.action.doAction(action);
+        // A kanban header has no specific picking. Opening the OCA barcode
+        // main menu is valid without a stock.picking singleton.
+        return this.action.doAction(
+            "stock_barcodes.action_stock_barcodes_action_client"
+        );
     }
 }

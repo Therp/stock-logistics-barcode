@@ -16,6 +16,7 @@
                 </span>
                 <button
                     class="o_stock_mobile_barcode btn"
+                    title="Open OCA barcode actions"
                     t-on-click="openBarcodeScanner"
                 >
                     <i class="fa fa-barcode" />
